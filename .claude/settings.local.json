@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(docker --version)",
+      "Bash(docker-compose --version)",
+      "Bash(docker compose *)",
+      "Bash(mongod --version)",
+      "Bash(redis-server --version)",
+      "Bash(npm install *)",
+      "PowerShell(Get-Service -Name \"MongoDB\" -ErrorAction SilentlyContinue)",
+      "Bash(curl -s http://localhost:5000/health)",
+      "Bash(npx tsc *)",
+      "Bash(redis-cli ping *)",
+      "Bash(memurai-cli ping *)",
+      "Bash(start http://localhost:5173)"
+    ]
+  }
+}
