@@ -1,49 +1,33 @@
-import nodemailer, { Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 
-let transporter: Transporter | null = null;
+let client: Resend | null = null;
 
-async function getTransporter(): Promise<Transporter> {
-  if (transporter) return transporter;
-
-  if (env.SMTP_HOST) {
-    transporter = nodemailer.createTransport({
-      host: env.SMTP_HOST,
-      port: env.SMTP_PORT,
-      secure: env.SMTP_PORT === 465,
-      auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
-    });
-  } else {
-    // Dev fallback — Ethereal test account (emails visible at ethereal.email)
-    const testAccount = await nodemailer.createTestAccount();
-    transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      auth: { user: testAccount.user, pass: testAccount.pass },
-    });
-    logger.info(`Ethereal test account: ${testAccount.user}`);
-  }
-
-  return transporter;
+function getClient(): Resend {
+  if (!client) client = new Resend(env.RESEND_API_KEY);
+  return client;
 }
 
 export async function sendLoginOtp(to: string, otp: string, firstName: string): Promise<void> {
-  const t = await getTransporter();
+  if (!env.RESEND_API_KEY) {
+    logger.warn(`[DEV] Email not sent — no RESEND_API_KEY. OTP for ${to}: ${otp}`);
+    return;
+  }
 
-  const info = await t.sendMail({
+  const { error } = await getClient().emails.send({
     from: env.EMAIL_FROM,
     to,
     subject: `${otp} is your Crystal login code`,
     html: buildOtpEmail(otp, firstName),
-    text: `Your Crystal login code is: ${otp}. It expires in 10 minutes.`,
   });
 
-  if (env.isDev) {
-    const previewUrl = nodemailer.getTestMessageUrl(info);
-    logger.info(`Login OTP for ${to}: ${otp}`);
-    if (previewUrl) logger.info(`Email preview: ${previewUrl}`);
+  if (error) {
+    logger.error('Resend error', error);
+    throw new Error('Failed to send verification email');
   }
+
+  logger.info(`Login OTP sent to ${to}`);
 }
 
 function buildOtpEmail(otp: string, firstName: string): string {
@@ -61,7 +45,6 @@ function buildOtpEmail(otp: string, firstName: string): string {
         <table width="480" cellpadding="0" cellspacing="0"
           style="background:#0D1117;border-radius:16px;border:1px solid #1A2332;overflow:hidden;max-width:480px;width:100%;">
 
-          <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#00D4FF,#7B2FFF);padding:3px 0 0;"></td>
           </tr>
@@ -78,17 +61,16 @@ function buildOtpEmail(otp: string, firstName: string): string {
             </td>
           </tr>
 
-          <!-- Body -->
           <tr>
             <td style="padding:0 40px 32px;">
               <p style="margin:0 0 8px;font-size:20px;font-weight:600;color:#F0F4F8;">
                 Hey ${firstName},
               </p>
               <p style="margin:0 0 28px;font-size:14px;color:#718096;line-height:1.6;">
-                Use the code below to complete your login. It expires in <strong style="color:#00D4FF;">10 minutes</strong>.
+                Use the code below to complete your login. It expires in
+                <strong style="color:#00D4FF;">10 minutes</strong>.
               </p>
 
-              <!-- OTP box -->
               <div style="background:#060912;border:1px solid #1A2332;border-radius:12px;
                 padding:28px;text-align:center;margin-bottom:28px;
                 box-shadow:0 0 24px rgba(0,212,255,0.08);">
@@ -101,13 +83,12 @@ function buildOtpEmail(otp: string, firstName: string): string {
                 </p>
               </div>
 
-              <p style="margin:0 0 8px;font-size:13px;color:#4A5568;line-height:1.6;">
-                If you didn't try to sign in, you can safely ignore this email — someone may have typed your email by mistake.
+              <p style="margin:0;font-size:13px;color:#4A5568;line-height:1.6;">
+                If you didn't try to sign in, you can safely ignore this email.
               </p>
             </td>
           </tr>
 
-          <!-- Footer -->
           <tr>
             <td style="border-top:1px solid #1A2332;padding:20px 40px;text-align:center;">
               <p style="margin:0;font-size:11px;color:#2D3748;">

@@ -6,6 +6,7 @@ import { setCredentials } from '@/features/auth/authSlice';
 import { useAppDispatch } from '@/app/hooks';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { useCrystalSplash } from '@/contexts/CrystalSplashContext';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
@@ -13,6 +14,7 @@ const RESEND_COOLDOWN = 60;
 export function LoginPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { triggerSplash } = useCrystalSplash();
 
   const [login, { isLoading: loggingIn }]           = useLoginMutation();
   const [verifyOtp, { isLoading: verifying }]        = useVerifyLoginOtpMutation();
@@ -56,8 +58,6 @@ export function LoginPage() {
         setMaskedEmail(maskEmail(form.email));
         setStep('otp');
         setCountdown(RESEND_COOLDOWN);
-        // In dev the OTP is returned — pre-fill it
-        if (result.data.devOtp) setOtp(result.data.devOtp.split(''));
       }
     } catch (err: unknown) {
       setError((err as { data?: { message?: string } })?.data?.message ?? 'Login failed');
@@ -73,7 +73,7 @@ export function LoginPage() {
       const result = await verifyOtp({ sessionId, otp: code }).unwrap();
       if (result.data?.accessToken) {
         dispatch(setCredentials({ accessToken: result.data.accessToken }));
-        navigate('/dashboard');
+        triggerSplash(() => navigate('/dashboard'));
       }
     } catch (err: unknown) {
       setOtpError((err as { data?: { message?: string } })?.data?.message ?? 'Invalid code');
@@ -87,10 +87,9 @@ export function LoginPage() {
     if (countdown > 0 || resending) return;
     setOtpError('');
     try {
-      const result = await resendOtp({ sessionId }).unwrap();
+      await resendOtp({ sessionId }).unwrap();
       setCountdown(RESEND_COOLDOWN);
       setOtp(Array(OTP_LENGTH).fill(''));
-      if (result.data?.devOtp) setOtp(result.data.devOtp.split(''));
       setTimeout(() => inputRefs.current[0]?.focus(), 50);
     } catch (err: unknown) {
       setOtpError((err as { data?: { message?: string } })?.data?.message ?? 'Failed to resend');
@@ -139,7 +138,7 @@ export function LoginPage() {
       const result = await verifyOtp({ sessionId, otp: code }).unwrap();
       if (result.data?.accessToken) {
         dispatch(setCredentials({ accessToken: result.data.accessToken }));
-        navigate('/dashboard');
+        triggerSplash(() => navigate('/dashboard'));
       }
     } catch (err: unknown) {
       setOtpError((err as { data?: { message?: string } })?.data?.message ?? 'Invalid code');

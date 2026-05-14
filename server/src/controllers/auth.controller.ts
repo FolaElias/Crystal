@@ -121,8 +121,6 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
         requiresOtp: true,
         sessionId,
         expiresIn: OTP_TTL,
-        // Return OTP in dev so you can test without a real mailbox
-        ...(env.isDev && { devOtp: otp }),
       },
     });
   } catch (err) {
@@ -217,7 +215,6 @@ export async function resendLoginOtp(req: Request, res: Response, next: NextFunc
       success: true,
       data: {
         expiresIn: OTP_TTL,
-        ...(env.isDev && { devOtp: newOtp }),
       },
     });
   } catch (err) {

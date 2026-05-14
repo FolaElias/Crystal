@@ -18,10 +18,7 @@ export const env = {
   JWT_REFRESH_EXPIRY: process.env.JWT_REFRESH_EXPIRY ?? '7d',
   CLIENT_URL: process.env.CLIENT_URL ?? 'http://localhost:5173',
   COINGECKO_API_KEY: process.env.COINGECKO_API_KEY ?? '',
-  SMTP_HOST: process.env.SMTP_HOST ?? '',
-  SMTP_PORT: parseInt(process.env.SMTP_PORT ?? '587', 10),
-  SMTP_USER: process.env.SMTP_USER ?? '',
-  SMTP_PASS: process.env.SMTP_PASS ?? '',
-  EMAIL_FROM: process.env.EMAIL_FROM ?? 'Crystal <noreply@crystal.app>',
+  RESEND_API_KEY: process.env.RESEND_API_KEY ?? '',
+  EMAIL_FROM: process.env.EMAIL_FROM ?? 'Crystal <onboarding@resend.dev>',
   isDev: process.env.NODE_ENV !== 'production',
 };

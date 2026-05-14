@@ -5,12 +5,14 @@ interface AuthState {
   user: User | null;
   accessToken: string | null;
   isAuthenticated: boolean;
+  isInitializing: boolean;
 }
 
 const initialState: AuthState = {
   user: null,
   accessToken: null,
   isAuthenticated: false,
+  isInitializing: true,
 };
 
 const authSlice = createSlice({
@@ -29,8 +31,11 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.isAuthenticated = false;
     },
+    setInitialized(state) {
+      state.isInitializing = false;
+    },
   },
 });
 
-export const { setCredentials, setUser, clearAuth } = authSlice.actions;
+export const { setCredentials, setUser, clearAuth, setInitialized } = authSlice.actions;
 export default authSlice.reducer;

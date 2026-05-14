@@ -6,13 +6,13 @@ export const authApi = apiSlice.injectEndpoints({
     register: builder.mutation<ApiResponse<AuthTokens>, RegisterPayload>({
       query: (body) => ({ url: '/auth/register', method: 'POST', body }),
     }),
-    login: builder.mutation<ApiResponse<{ requiresOtp: boolean; sessionId: string; expiresIn: number; devOtp?: string }>, LoginPayload>({
+    login: builder.mutation<ApiResponse<{ requiresOtp: boolean; sessionId: string; expiresIn: number }>, LoginPayload>({
       query: (body) => ({ url: '/auth/login', method: 'POST', body }),
     }),
     verifyLoginOtp: builder.mutation<ApiResponse<AuthTokens>, { sessionId: string; otp: string }>({
       query: (body) => ({ url: '/auth/login/verify-otp', method: 'POST', body }),
     }),
-    resendLoginOtp: builder.mutation<ApiResponse<{ expiresIn: number; devOtp?: string }>, { sessionId: string }>({
+    resendLoginOtp: builder.mutation<ApiResponse<{ expiresIn: number }>, { sessionId: string }>({
       query: (body) => ({ url: '/auth/login/resend-otp', method: 'POST', body }),
     }),
     logout: builder.mutation<ApiResponse, void>({

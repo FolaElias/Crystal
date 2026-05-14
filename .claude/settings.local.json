@@ -13,7 +13,16 @@
       "Bash(npx tsc *)",
       "Bash(redis-cli ping *)",
       "Bash(memurai-cli ping *)",
-      "Bash(start http://localhost:5173)"
+      "Bash(start http://localhost:5173)",
+      "Bash(taskkill /F /IM node.exe)",
+      "PowerShell($pids = \\(netstat -ano | Select-String \":5000\\\\s\"\\).Matches | ForEach-Object { \\($_ -split '\\\\s+'\\)[-1] } | Sort-Object -Unique; foreach \\($p in $pids\\) { taskkill /PID $p /F 2>$null }; Start-Sleep -Seconds 1; Write-Output \"done\")",
+      "PowerShell(taskkill /PID 11888 /F)",
+      "Bash(npm run *)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :5000)",
+      "Bash(findstr LISTENING)",
+      "Bash(taskkill /PID 2644 /F)",
+      "PowerShell(Stop-Process -Id 2644 -Force)"
     ]
   }
 }
