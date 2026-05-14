@@ -176,8 +176,9 @@ export async function verifyLoginOtp(req: Request, res: Response, next: NextFunc
     const accessToken = signAccessToken(user._id.toString());
     const refreshToken = signRefreshToken(user._id.toString());
 
-    user.refreshTokens = [...(user.refreshTokens ?? []).slice(-4), refreshToken];
-    await user.save();
+    await User.findByIdAndUpdate(user._id, {
+      $push: { refreshTokens: { $each: [refreshToken], $slice: -5 } },
+    });
 
     res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTS);
     res.json({ success: true, data: { accessToken, expiresIn: 15 * 60 } });
@@ -237,8 +238,10 @@ export async function refresh(req: Request, res: Response, next: NextFunction): 
     const newAccess = signAccessToken(user._id.toString());
     const newRefresh = signRefreshToken(user._id.toString());
 
-    user.refreshTokens = user.refreshTokens.filter((t) => t !== token).concat(newRefresh);
-    await user.save();
+    await User.findByIdAndUpdate(user._id, { $pull: { refreshTokens: token } });
+    await User.findByIdAndUpdate(user._id, {
+      $push: { refreshTokens: { $each: [newRefresh], $slice: -5 } },
+    });
 
     res.cookie(REFRESH_COOKIE, newRefresh, COOKIE_OPTS);
     res.json({ success: true, data: { accessToken: newAccess, expiresIn: 15 * 60 } });

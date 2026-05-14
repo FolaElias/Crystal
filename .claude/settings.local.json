@@ -22,7 +22,17 @@
       "Bash(findstr :5000)",
       "Bash(findstr LISTENING)",
       "Bash(taskkill /PID 2644 /F)",
-      "PowerShell(Stop-Process -Id 2644 -Force)"
+      "PowerShell(Stop-Process -Id 2644 -Force)",
+      "Bash(node -e \"const ts = require\\('typescript'\\); const cfg = ts.readConfigFile\\('tsconfig.json', ts.sys.readFile\\); console.log\\(JSON.stringify\\(cfg.error || 'no error'\\)\\); const parsed = ts.parseJsonConfigFileContent\\(cfg.config, ts.sys, '.'\\); parsed.errors.forEach\\(e => console.log\\(ts.flattenDiagnosticMessageText\\(e.messageText, '\\\\n'\\)\\)\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const ts = require\\('typescript'\\); const cfg = ts.readConfigFile\\('tsconfig.json', ts.sys.readFile\\); const parsed = ts.parseJsonConfigFileContent\\(cfg.config, ts.sys, '.'\\); parsed.errors.forEach\\(e => console.log\\(ts.flattenDiagnosticMessageText\\(e.messageText, '\\\\n'\\)\\)\\)\")",
+      "Bash(node -e \"const ts = require\\('./node_modules/typescript'\\); console.log\\('TS version:', ts.version\\)\")",
+      "Bash(node_modules\\\\.bin\\\\tsc --version)",
+      "Bash(.\\\\node_modules\\\\.bin\\\\tsc --noEmit)",
+      "Bash(mkdir -p \"c:\\\\Users\\\\Admin\\\\Desktop\\\\PROJECTS\\\\Crystal\\\\.vscode\" 2>/dev/null; ls \"c:\\\\Users\\\\Admin\\\\Desktop\\\\PROJECTS\\\\Crystal\\\\.vscode\" 2>&1)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Admin\\Desktop\\PROJECTS\\Crystal"
     ]
   }
 }
