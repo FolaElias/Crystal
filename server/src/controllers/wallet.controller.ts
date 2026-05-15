@@ -1,17 +1,56 @@
 import { Response, NextFunction } from 'express';
-import { ethers } from 'ethers';
 import { Wallet as WalletModel } from '../models/Wallet';
 import { Transaction } from '../models/Transaction';
 import { AppError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
-import { AssetSymbol, ApiResponse } from '@crystal/shared';
+import type { AssetSymbol, ApiResponse } from '@crystal/shared';
+import { getDepositAddress as deriveDepositAddress, CHAIN_NETWORKS } from '../services/walletService';
+import { getCachedPrices } from '../services/priceService';
+
+const ALL_SYMBOLS: AssetSymbol[] = ['BTC', 'ETH', 'USDT', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'SUI'];
 
 export async function getWallet(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const wallet = await WalletModel.findOne({ userId: req.userId });
     if (!wallet) throw new AppError('Wallet not found', 404);
 
-    const response: ApiResponse = { success: true, data: wallet };
+    // Backfill any coins added after account creation
+    const existing = new Set(wallet.balances.map((b) => b.symbol));
+    const missing = ALL_SYMBOLS.filter((s) => !existing.has(s));
+    if (missing.length) {
+      await WalletModel.findByIdAndUpdate(wallet._id, {
+        $push: { balances: { $each: missing.map((symbol) => ({ symbol, available: 0, locked: 0 })) } },
+      });
+      for (const symbol of missing) wallet.balances.push({ symbol, available: 0, locked: 0 });
+    }
+
+    const prices = await getCachedPrices();
+
+    const balancesWithValue = wallet.balances.map((b) => {
+      const price = prices[b.symbol]?.usd ?? 0;
+      const total = b.available + b.locked;
+      return {
+        symbol: b.symbol,
+        available: b.available,
+        locked: b.locked,
+        total,
+        usdValue: total * price,
+      };
+    });
+
+    const totalUsdValue = balancesWithValue.reduce((sum, b) => sum + b.usdValue, 0);
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        _id: wallet._id,
+        userId: wallet.userId,
+        balances: balancesWithValue,
+        totalUsdValue,
+        createdAt: wallet.createdAt,
+        updatedAt: wallet.updatedAt,
+      },
+    };
     res.json(response);
   } catch (err) {
     next(err);
@@ -21,15 +60,13 @@ export async function getWallet(req: AuthRequest, res: Response, next: NextFunct
 export async function getDepositAddress(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { symbol } = req.params as { symbol: AssetSymbol };
-    let wallet = await WalletModel.findOne({ userId: req.userId });
+    const wallet = await WalletModel.findOne({ userId: req.userId });
     if (!wallet) throw new AppError('Wallet not found', 404);
 
     let balance = wallet.balances.find((b) => b.symbol === symbol);
 
     if (!balance?.depositAddress) {
-      // Generate a deterministic address per user+asset (demo — use HD wallet in production)
-      const wallet_eth = ethers.Wallet.createRandom();
-      const address = wallet_eth.address;
+      const address = await deriveDepositAddress(req.userId!, symbol);
 
       if (!balance) {
         wallet.balances.push({ symbol, available: 0, locked: 0, depositAddress: address });
@@ -42,8 +79,22 @@ export async function getDepositAddress(req: AuthRequest, res: Response, next: N
 
     const response: ApiResponse = {
       success: true,
-      data: { symbol, address: balance.depositAddress, network: 'ERC-20' },
+      data: {
+        symbol,
+        address: balance.depositAddress,
+        network: CHAIN_NETWORKS[symbol] ?? 'Unknown',
+      },
     };
+    res.json(response);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getPrices(_req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const prices = await getCachedPrices();
+    const response: ApiResponse = { success: true, data: prices };
     res.json(response);
   } catch (err) {
     next(err);

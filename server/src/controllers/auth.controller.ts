@@ -9,7 +9,9 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/
 import { redis } from '../config/redis';
 import { sendLoginOtp } from '../services/email.service';
 import { env } from '../config/env';
-import { ApiResponse, RegisterPayload } from '@crystal/shared';
+import { ApiResponse, RegisterPayload, AssetSymbol } from '@crystal/shared';
+
+const ALL_SYMBOLS: AssetSymbol[] = ['BTC', 'ETH', 'USDT', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'SUI'];
 
 const REFRESH_COOKIE = 'crystal_refresh';
 const OTP_TTL = 60 * 10;          // 10 minutes
@@ -67,7 +69,10 @@ export async function register(
     }
 
     const user = await User.create({ email, username, password, firstName, lastName });
-    await Wallet.create({ userId: user._id, balances: [] });
+    await Wallet.create({
+      userId: user._id,
+      balances: ALL_SYMBOLS.map((symbol) => ({ symbol, available: 0, locked: 0 })),
+    });
 
     const accessToken = signAccessToken(user._id.toString());
     const refreshToken = signRefreshToken(user._id.toString());

@@ -1,4 +1,4 @@
-export type AssetSymbol = 'BTC' | 'ETH' | 'USDT' | 'BNB' | 'SOL' | 'XRP' | 'ADA' | 'DOGE';
+export type AssetSymbol = 'BTC' | 'ETH' | 'USDT' | 'BNB' | 'SOL' | 'XRP' | 'ADA' | 'DOGE' | 'SUI';
 
 export interface Asset {
   symbol: AssetSymbol;
@@ -31,3 +31,11 @@ export interface DepositAddress {
   address: string;
   qrCode?: string;
 }
+
+export interface PriceInfo {
+  usd: number;
+  usd_24h_change: number;
+  usd_24h_vol: number;
+}
+
+export type PriceMap = Partial<Record<AssetSymbol, PriceInfo>>;

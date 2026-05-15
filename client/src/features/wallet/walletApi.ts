@@ -1,5 +1,5 @@
 import { apiSlice } from '../../app/api';
-import { ApiResponse, Wallet, DepositAddress, PaginatedResponse, Transaction, AssetSymbol } from '@crystal/shared';
+import { ApiResponse, Wallet, DepositAddress, PaginatedResponse, Transaction, AssetSymbol, PriceMap } from '@crystal/shared';
 
 export const walletApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -10,6 +10,9 @@ export const walletApi = apiSlice.injectEndpoints({
     getDepositAddress: builder.query<ApiResponse<DepositAddress>, AssetSymbol>({
       query: (symbol) => `/wallet/deposit/${symbol}`,
     }),
+    getPrices: builder.query<ApiResponse<PriceMap>, void>({
+      query: () => '/wallet/prices',
+    }),
     getTransactions: builder.query<ApiResponse<PaginatedResponse<Transaction>>, { page?: number; limit?: number }>({
       query: ({ page = 1, limit = 20 } = {}) => `/wallet/transactions?page=${page}&limit=${limit}`,
       providesTags: ['Transactions'],
@@ -17,4 +20,4 @@ export const walletApi = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useGetWalletQuery, useGetDepositAddressQuery, useGetTransactionsQuery } = walletApi;
+export const { useGetWalletQuery, useGetDepositAddressQuery, useGetPricesQuery, useGetTransactionsQuery } = walletApi;

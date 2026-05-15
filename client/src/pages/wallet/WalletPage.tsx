@@ -1,24 +1,38 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Plus, ArrowDownToLine, ArrowUpFromLine, RefreshCw } from 'lucide-react';
+import { Eye, EyeOff, Plus, ArrowDownToLine, ArrowUpFromLine, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useGetWalletQuery } from '@/features/wallet/walletApi';
-import { formatCurrency, formatCrypto } from '@/lib/utils';
+import { useLivePrices } from '@/hooks/useLivePrices';
+import { formatCurrency, formatCrypto, formatPercent } from '@/lib/utils';
 import type { AssetSymbol } from '@crystal/shared';
 
-const ASSET_META: Record<string, { name: string; color: string; bg: string }> = {
+const COIN_META: Record<string, { name: string; color: string; bg: string }> = {
   BTC:  { name: 'Bitcoin',  color: '#F7931A', bg: 'rgba(247,147,26,0.12)'  },
   ETH:  { name: 'Ethereum', color: '#627EEA', bg: 'rgba(98,126,234,0.12)'  },
   USDT: { name: 'Tether',   color: '#26A17B', bg: 'rgba(38,161,123,0.12)'  },
   BNB:  { name: 'BNB',      color: '#F0B90B', bg: 'rgba(240,185,11,0.12)'  },
   SOL:  { name: 'Solana',   color: '#9945FF', bg: 'rgba(153,69,255,0.12)'  },
   XRP:  { name: 'XRP',      color: '#00AAE4', bg: 'rgba(0,170,228,0.12)'   },
+  ADA:  { name: 'Cardano',  color: '#0033AD', bg: 'rgba(0,51,173,0.12)'    },
+  DOGE: { name: 'Dogecoin', color: '#C2A633', bg: 'rgba(194,166,51,0.12)'  },
+  SUI:  { name: 'Sui',      color: '#4CA3FF', bg: 'rgba(76,163,255,0.12)'  },
 };
 
 export function WalletPage() {
   const [hideBalance, setHideBalance] = useState(false);
   const { data: walletData, isLoading, refetch } = useGetWalletQuery();
+  const { prices } = useLivePrices();
   const wallet = walletData?.data;
+
+  // Compute live USD values
+  const balancesWithLiveValue = wallet?.balances?.map((b) => {
+    const price = prices[b.symbol]?.usd ?? 0;
+    const total = b.available + b.locked;
+    return { ...b, total, liveUsdValue: total * price, livePrice: price };
+  }) ?? [];
+
+  const totalLiveValue = balancesWithLiveValue.reduce((sum, b) => sum + b.liveUsdValue, 0);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -52,7 +66,7 @@ export function WalletPage() {
               <p className="text-xs text-muted-foreground tracking-widest uppercase mb-2">Total Balance</p>
               <div className="flex items-end gap-3 flex-wrap">
                 <p className="text-3xl sm:text-5xl font-bold font-mono text-white break-all">
-                  {hideBalance ? '••••••' : formatCurrency(wallet?.totalUsdValue ?? 0)}
+                  {hideBalance ? '••••••' : formatCurrency(totalLiveValue > 0 ? totalLiveValue : (wallet?.totalUsdValue ?? 0))}
                 </p>
                 <button
                   onClick={() => setHideBalance((p) => !p)}
@@ -67,7 +81,6 @@ export function WalletPage() {
             </div>
           </div>
 
-          {/* Action buttons */}
           <div className="flex items-center gap-3 mt-5 flex-wrap">
             <Button variant="success" size="sm" className="gap-2">
               <ArrowDownToLine className="w-4 h-4" />
@@ -87,23 +100,24 @@ export function WalletPage() {
 
         {/* Desktop table */}
         <Card className="overflow-hidden hidden sm:block">
-          <div className="grid grid-cols-4 px-5 py-3 border-b border-crystal-border">
-            {['Asset', 'Available', 'Locked', 'USD Value'].map((h) => (
+          <div className="grid grid-cols-5 px-5 py-3 border-b border-crystal-border">
+            {['Asset', 'Price', 'Available', 'Locked', 'USD Value'].map((h) => (
               <span key={h} className="text-xs text-muted-foreground tracking-widest uppercase">{h}</span>
             ))}
           </div>
 
           {isLoading ? (
             <EmptyState loading />
-          ) : !wallet?.balances?.length ? (
+          ) : !balancesWithLiveValue.length ? (
             <EmptyState />
           ) : (
-            wallet.balances.map((balance, i) => {
-              const meta = ASSET_META[balance.symbol] ?? { name: balance.symbol, color: '#888', bg: 'rgba(128,128,128,0.1)' };
+            balancesWithLiveValue.map((balance, i) => {
+              const meta = COIN_META[balance.symbol] ?? { name: balance.symbol, color: '#888', bg: 'rgba(128,128,128,0.1)' };
+              const change = prices[balance.symbol as AssetSymbol]?.usd_24h_change ?? 0;
               return (
                 <div
                   key={balance.symbol}
-                  className="grid grid-cols-4 items-center px-5 py-4 border-b border-crystal-border/50 hover:bg-crystal-hover transition-colors duration-150 cursor-pointer group"
+                  className="grid grid-cols-5 items-center px-5 py-4 border-b border-crystal-border/50 hover:bg-crystal-hover transition-colors duration-150 cursor-pointer group"
                   style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <div className="flex items-center gap-3">
@@ -118,10 +132,19 @@ export function WalletPage() {
                       <p className="text-xs text-muted-foreground">{meta.name}</p>
                     </div>
                   </div>
+                  <div>
+                    <p className="text-sm font-mono font-semibold">
+                      {balance.livePrice ? formatCurrency(balance.livePrice) : '—'}
+                    </p>
+                    <div className={`flex items-center gap-0.5 text-xs font-mono ${change >= 0 ? 'text-neon-green' : 'text-neon-red'}`}>
+                      {change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {formatPercent(change)}
+                    </div>
+                  </div>
                   <p className="text-sm font-mono font-semibold">{hideBalance ? '••••' : formatCrypto(balance.available)}</p>
                   <p className="text-sm font-mono text-muted-foreground">{hideBalance ? '••••' : formatCrypto(balance.locked)}</p>
                   <p className="text-sm font-mono font-semibold" style={{ color: meta.color }}>
-                    {hideBalance ? '••••' : formatCurrency(balance.usdValue ?? 0)}
+                    {hideBalance ? '••••' : formatCurrency(balance.liveUsdValue)}
                   </p>
                 </div>
               );
@@ -133,11 +156,12 @@ export function WalletPage() {
         <div className="sm:hidden space-y-3">
           {isLoading ? (
             <EmptyState loading />
-          ) : !wallet?.balances?.length ? (
+          ) : !balancesWithLiveValue.length ? (
             <EmptyState />
           ) : (
-            wallet.balances.map((balance) => {
-              const meta = ASSET_META[balance.symbol] ?? { name: balance.symbol, color: '#888', bg: 'rgba(128,128,128,0.1)' };
+            balancesWithLiveValue.map((balance) => {
+              const meta = COIN_META[balance.symbol] ?? { name: balance.symbol, color: '#888', bg: 'rgba(128,128,128,0.1)' };
+              const change = prices[balance.symbol as AssetSymbol]?.usd_24h_change ?? 0;
               return (
                 <Card key={balance.symbol} className="p-4">
                   <div className="flex items-center justify-between">
@@ -151,15 +175,26 @@ export function WalletPage() {
                       <div>
                         <p className="text-sm font-semibold">{balance.symbol}</p>
                         <p className="text-xs text-muted-foreground">{meta.name}</p>
+                        {balance.livePrice > 0 && (
+                          <div className={`flex items-center gap-0.5 text-xs font-mono ${change >= 0 ? 'text-neon-green' : 'text-neon-red'}`}>
+                            {change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                            {formatPercent(change)}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-mono font-semibold" style={{ color: meta.color }}>
-                        {hideBalance ? '••••' : formatCurrency(balance.usdValue ?? 0)}
+                        {hideBalance ? '••••' : formatCurrency(balance.liveUsdValue)}
                       </p>
                       <p className="text-xs text-muted-foreground font-mono mt-0.5">
                         {hideBalance ? '••••' : formatCrypto(balance.available)} {balance.symbol}
                       </p>
+                      {balance.livePrice > 0 && (
+                        <p className="text-xs text-muted-foreground font-mono">
+                          @ {formatCurrency(balance.livePrice)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </Card>

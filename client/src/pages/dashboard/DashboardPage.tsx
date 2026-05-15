@@ -2,14 +2,20 @@ import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, Activity, Zap } from 'l
 import { Card } from '@/components/ui/Card';
 import { useGetWalletQuery } from '@/features/wallet/walletApi';
 import { useGetMeQuery } from '@/features/auth/authApi';
+import { useLivePrices } from '@/hooks/useLivePrices';
 import { formatCurrency, formatPercent } from '@/lib/utils';
+import type { AssetSymbol } from '@crystal/shared';
 
-const MOCK_PRICES: Record<string, { price: number; change: number; volume: string }> = {
-  BTC:  { price: 67420.50, change:  2.34, volume: '42.1B' },
-  ETH:  { price:  3521.80, change: -1.12, volume: '18.3B' },
-  USDT: { price:     1.00, change:  0.01, volume: '92.4B' },
-  BNB:  { price:   598.40, change:  1.87, volume:  '3.2B' },
-  SOL:  { price:   172.30, change:  4.52, volume:  '5.7B' },
+const COIN_META: Record<string, { name: string; color: string }> = {
+  BTC:  { name: 'Bitcoin',  color: '#F7931A' },
+  ETH:  { name: 'Ethereum', color: '#627EEA' },
+  USDT: { name: 'Tether',   color: '#26A17B' },
+  BNB:  { name: 'BNB',      color: '#F0B90B' },
+  SOL:  { name: 'Solana',   color: '#9945FF' },
+  XRP:  { name: 'XRP',      color: '#00AAE4' },
+  ADA:  { name: 'Cardano',  color: '#0033AD' },
+  DOGE: { name: 'Dogecoin', color: '#C2A633' },
+  SUI:  { name: 'Sui',      color: '#4CA3FF' },
 };
 
 const QUICK_ACTIONS = [
@@ -19,12 +25,21 @@ const QUICK_ACTIONS = [
   { label: 'Withdraw', sub: 'Send to wallet',    color: 'neon-purple' },
 ];
 
+const DISPLAY_COINS: AssetSymbol[] = ['BTC', 'ETH', 'BNB', 'SOL', 'SUI', 'XRP', 'ADA', 'DOGE', 'USDT'];
+
 export function DashboardPage() {
   const { data: meData }     = useGetMeQuery();
   const { data: walletData } = useGetWalletQuery();
+  const { prices, connected } = useLivePrices();
 
   const user   = meData?.data;
   const wallet = walletData?.data;
+
+  // Compute portfolio value from live prices
+  const portfolioValue = wallet?.balances?.reduce((sum, b) => {
+    const price = prices[b.symbol]?.usd ?? 0;
+    return sum + (b.available + b.locked) * price;
+  }, 0) ?? wallet?.totalUsdValue ?? 0;
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -40,7 +55,7 @@ export function DashboardPage() {
         <div className="self-start sm:self-auto flex items-center gap-2 px-3 py-1.5 rounded-lg glass border border-neon-cyan/15">
           <Activity className="w-3.5 h-3.5 text-neon-cyan" />
           <span className="text-xs text-neon-cyan font-mono tracking-wide">LIVE</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse" />
+          <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-neon-green animate-pulse' : 'bg-muted-foreground'}`} />
         </div>
       </div>
 
@@ -55,15 +70,12 @@ export function DashboardPage() {
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground tracking-widest uppercase mb-2">Total Portfolio Value</p>
             <p className="text-3xl sm:text-5xl font-bold font-mono text-white text-glow-cyan break-all">
-              {formatCurrency(wallet?.totalUsdValue ?? 0)}
+              {formatCurrency(portfolioValue)}
             </p>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3">
-              <span className="flex items-center gap-1 text-sm text-neon-green font-semibold">
-                <TrendingUp className="w-4 h-4 flex-shrink-0" />
-                +2.41% today
+              <span className="flex items-center gap-1 text-sm text-muted-foreground font-semibold">
+                {wallet?.balances?.length ?? 0} assets tracked
               </span>
-              <span className="hidden sm:block text-muted-foreground text-xs">|</span>
-              <span className="text-xs text-muted-foreground">+$1,284.32 this week</span>
             </div>
           </div>
           <div className="relative flex-shrink-0">
@@ -75,7 +87,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick actions — 2 cols on mobile, 4 on sm+ */}
+      {/* Quick actions */}
       <div className="animate-slide-up delay-200">
         <p className="text-xs text-muted-foreground tracking-widest uppercase mb-3">Quick Actions</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -93,13 +105,14 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Market overview */}
+      {/* Market overview — live prices */}
       <div className="animate-slide-up delay-300">
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs text-muted-foreground tracking-widest uppercase">Market Overview</p>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Zap className="w-3 h-3 text-neon-gold" />
-            <span className="hidden sm:inline">Live prices</span>
+            <span className="hidden sm:inline">CoinGecko</span>
+            {connected && <span className="text-neon-green font-mono">• LIVE</span>}
           </div>
         </div>
 
@@ -110,55 +123,84 @@ export function DashboardPage() {
               <span key={h} className="text-xs text-muted-foreground tracking-widest uppercase">{h}</span>
             ))}
           </div>
-          {Object.entries(MOCK_PRICES).map(([symbol, { price, change, volume }], i) => (
-            <div
-              key={symbol}
-              className="grid grid-cols-4 items-center px-5 py-4 border-b border-crystal-border/50 hover:bg-crystal-hover transition-colors duration-150 cursor-pointer group"
-              style={{ animationDelay: `${i * 80}ms` }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="relative w-9 h-9 rounded-full bg-neon-cyan/10 border border-neon-cyan/20 flex items-center justify-center flex-shrink-0 group-hover:border-neon-cyan/40 transition-colors">
-                  <span className="text-xs font-bold text-neon-cyan font-mono">{symbol.slice(0, 2)}</span>
+          {DISPLAY_COINS.map((symbol, i) => {
+            const info = prices[symbol];
+            const meta = COIN_META[symbol] ?? { name: symbol, color: '#888' };
+            const price = info?.usd ?? 0;
+            const change = info?.usd_24h_change ?? 0;
+            const vol = info?.usd_24h_vol ?? 0;
+            return (
+              <div
+                key={symbol}
+                className="grid grid-cols-4 items-center px-5 py-4 border-b border-crystal-border/50 hover:bg-crystal-hover transition-colors duration-150 cursor-pointer group"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="relative w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform"
+                    style={{ backgroundColor: `${meta.color}18`, border: `1px solid ${meta.color}33` }}
+                  >
+                    <span className="text-xs font-bold font-mono" style={{ color: meta.color }}>
+                      {symbol.slice(0, 2)}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{symbol}</p>
+                    <p className="text-xs text-muted-foreground">{meta.name}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">{symbol}</p>
-                  <p className="text-xs text-muted-foreground">{symbol}/USDT</p>
+                <p className="text-sm font-mono font-semibold">
+                  {price ? formatCurrency(price) : <span className="text-muted-foreground animate-pulse">—</span>}
+                </p>
+                <div className={`flex items-center gap-1 text-sm font-semibold font-mono ${change >= 0 ? 'text-neon-green' : 'text-neon-red'}`}>
+                  {change >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                  {info ? formatPercent(change) : <span className="text-muted-foreground animate-pulse">—</span>}
                 </div>
+                <p className="text-sm text-muted-foreground font-mono">
+                  {vol ? `$${(vol / 1e9).toFixed(1)}B` : <span className="animate-pulse">—</span>}
+                </p>
               </div>
-              <p className="text-sm font-mono font-semibold">{formatCurrency(price)}</p>
-              <div className={`flex items-center gap-1 text-sm font-semibold font-mono ${change >= 0 ? 'text-neon-green' : 'text-neon-red'}`}>
-                {change >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                {formatPercent(change)}
-              </div>
-              <p className="text-sm text-muted-foreground font-mono">${volume}</p>
-            </div>
-          ))}
+            );
+          })}
         </Card>
 
         {/* Mobile cards */}
         <div className="sm:hidden space-y-2">
-          {Object.entries(MOCK_PRICES).map(([symbol, { price, change }]) => (
-            <Card key={symbol} animated glow="cyan" className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-neon-cyan/10 border border-neon-cyan/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-neon-cyan font-mono">{symbol.slice(0, 2)}</span>
+          {DISPLAY_COINS.map((symbol) => {
+            const info = prices[symbol];
+            const meta = COIN_META[symbol] ?? { name: symbol, color: '#888' };
+            const price = info?.usd ?? 0;
+            const change = info?.usd_24h_change ?? 0;
+            return (
+              <Card key={symbol} animated glow="cyan" className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${meta.color}18`, border: `1px solid ${meta.color}33` }}
+                    >
+                      <span className="text-xs font-bold font-mono" style={{ color: meta.color }}>
+                        {symbol.slice(0, 2)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{symbol}</p>
+                      <p className="text-xs text-muted-foreground">{meta.name}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold">{symbol}</p>
-                    <p className="text-xs text-muted-foreground">{symbol}/USDT</p>
+                  <div className="text-right">
+                    <p className="text-sm font-mono font-semibold">
+                      {price ? formatCurrency(price) : '—'}
+                    </p>
+                    <div className={`flex items-center justify-end gap-1 text-xs font-semibold font-mono ${change >= 0 ? 'text-neon-green' : 'text-neon-red'}`}>
+                      {change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {info ? formatPercent(change) : '—'}
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-mono font-semibold">{formatCurrency(price)}</p>
-                  <div className={`flex items-center justify-end gap-1 text-xs font-semibold font-mono ${change >= 0 ? 'text-neon-green' : 'text-neon-red'}`}>
-                    {change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    {formatPercent(change)}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       </div>
     </div>
