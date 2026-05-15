@@ -284,6 +284,39 @@
   50%       { opacity: 1; }
 }
 
+/* ─── Cyberpunk glitch keyframes ─── */
+@keyframes glitch-text {
+  0%, 90%, 100% { transform: skew(0deg); }
+  92%            { transform: skew(-0.6deg) scaleX(1.01); }
+  94%            { transform: skew(0.4deg); }
+  96%            { transform: skew(-0.2deg); }
+}
+@keyframes glitch-clip-1 {
+  0%, 85%, 100% { clip-path: inset(100% 0 0 0); opacity: 0; }
+  86%  { clip-path: inset(38% 0 56% 0); opacity: 1; transform: translate(-4px, 0); }
+  88%  { clip-path: inset(72% 0 12% 0); opacity: 1; transform: translate(3px, 0); }
+  90%  { clip-path: inset(20% 0 75% 0); opacity: 1; transform: translate(-2px, 0); }
+  92%  { clip-path: inset(58% 0 30% 0); opacity: 1; transform: translate(4px, 0); }
+  94%  { clip-path: inset(100% 0 0 0);  opacity: 0; }
+}
+@keyframes glitch-clip-2 {
+  0%, 87%, 100% { clip-path: inset(100% 0 0 0); opacity: 0; }
+  88%  { clip-path: inset(60% 0 28% 0); opacity: 1; transform: translate(5px, 0); }
+  90%  { clip-path: inset(10% 0 82% 0); opacity: 1; transform: translate(-4px, 0); }
+  92%  { clip-path: inset(44% 0 44% 0); opacity: 1; transform: translate(3px, 0); }
+  94%  { clip-path: inset(100% 0 0 0);  opacity: 0; }
+}
+@keyframes modal-in {
+  from { transform: scale(0.88) translateY(-12px); opacity: 0; filter: blur(6px); }
+  to   { transform: scale(1) translateY(0);        opacity: 1; filter: blur(0); }
+}
+@keyframes modal-out {
+  from { transform: scale(1) translateY(0);        opacity: 1; filter: blur(0); }
+  to   { transform: scale(0.88) translateY(-12px); opacity: 0; filter: blur(6px); }
+}
+@keyframes modal-backdrop-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+
 /* ─── Stagger animation delays ─── */
 .delay-100 { animation-delay: 0.1s; }
 .delay-200 { animation-delay: 0.2s; }

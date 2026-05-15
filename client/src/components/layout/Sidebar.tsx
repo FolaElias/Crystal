@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, BarChart2,
   History, Settings, LogOut, Zap, X,
@@ -7,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { useAppDispatch } from '@/app/hooks';
 import { clearAuth } from '@/features/auth/authSlice';
 import { useLogoutMutation } from '@/features/auth/authApi';
+import { useCrystalSplash } from '@/contexts/CrystalSplashContext';
+import { LogoutModal } from '@/components/ui/LogoutModal';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -24,11 +27,16 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const dispatch = useAppDispatch();
-  const [logout] = useLogoutMutation();
+  const navigate = useNavigate();
+  const { triggerSplash } = useCrystalSplash();
+  const [logout, { isLoading: loggingOut }] = useLogoutMutation();
+  const [showModal, setShowModal] = useState(false);
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogoutConfirm = async () => {
+    await logout().catch(() => null);
     dispatch(clearAuth());
+    setShowModal(false);
+    triggerSplash(() => navigate('/login'));
   };
 
   const sidebarContent = (
@@ -114,7 +122,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       {/* Logout */}
       <div className="p-3 pb-6">
         <button
-          onClick={handleLogout}
+          onClick={() => setShowModal(true)}
           className="group flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-muted-foreground border border-transparent hover:bg-neon-red/10 hover:text-neon-red hover:border-neon-red/25 transition-all duration-200"
         >
           <LogOut className="w-4 h-4 group-hover:rotate-12 transition-transform duration-200" />
@@ -149,6 +157,13 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       >
         {sidebarContent}
       </aside>
+
+      <LogoutModal
+        isOpen={showModal}
+        isLoading={loggingOut}
+        onConfirm={handleLogoutConfirm}
+        onCancel={() => setShowModal(false)}
+      />
     </>
   );
 }
